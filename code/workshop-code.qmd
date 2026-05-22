@@ -43,6 +43,7 @@ library(scales) # modifying axis labels
 library(ggeffects) # getting model predictions
 library(ggplot2)
 library(MuMIn) # model selection
+library(dplyr)
 
 # read in your data here
 
@@ -172,8 +173,6 @@ ggplot(data = drought_exp_clean,
        x = "Specific leaf area (cm\U00B2/g)",
        y = "Total mass (g)") +
   # changed theme
-  theme_minimal() +
-  # removed legend
   theme(legend.position = "none")
 
 ```
@@ -190,7 +189,9 @@ Add a title describing the differences in (mean or median) plant mass between wa
 
 
 ```{r}
-#| label: jitterplot
+#| label: jitter-treatment
+#| fig-height: 6
+#| fig-width: 9
 
 # base layer: ggplot
 ggplot(data = drought_exp_clean,
@@ -211,8 +212,6 @@ ggplot(data = drought_exp_clean,
   labs(title = "Well watered individuals tend to have higher mass than drought stressed",
        x = "Treatment",
        y = "Total plant mass (g)") +
-  # changed theme
-  theme_minimal() +
   # removed legend
   theme(legend.position = "none")
 ```
@@ -232,6 +231,8 @@ Bonus: order the x-axis by decreasing mean plant mass.
 
 ```{r}
 #| label: jitter-species
+#| fig-height: 6
+#| fig-width: 8
 
 # base layer: ggplot
 ggplot(data = drought_exp_clean,
@@ -260,8 +261,6 @@ ggplot(data = drought_exp_clean,
       "Stipa pulchra" = stipul_col,
       "Eschscholzia california" = esccal_col,
       "Grindelia camporum" = gricam_col)) +
-  # changed theme
-  theme_minimal() +
   # removed legend
   theme(legend.position = "none")
 ```
@@ -336,6 +335,8 @@ model7 <- lm(
 
 ```{r}
 #| label: checking-diagnostics
+#| fig-height: 6
+#| fig-width: 6
 
 #displaying lots in 2x2 grid
 par(mfrow = c(2,2))
@@ -410,11 +411,60 @@ Rename the `x` column and `group` column to match the original data frame (`drou
 
 Look at the object before plotting.
 
+```{r}
+#| label: model-predictions
+
+preds <- ggpredict(
+  model4, # model object
+  terms = c("water_treatment", "species_name")) |> # predictors 
+  # renamed column to fit original data frame
+  rename(water_treatment = x,
+       species_name = group)
+
+```
+
 
 
 # 5. Final figure
 
 Create a clean, publication ready figure depicting predictions for the best model and the underlying data.
+
+```{r}
+#| label: final-figure
+#| fig-height: 6
+#| fig-width: 10
+
+# base layer: ggplot
+ggplot(data = drought_exp_clean,
+       mapping = aes(x = water_treatment,
+                     y = total_g,
+                     color = water_treatment)) +
+  # added jitter
+  geom_jitter(height = 0,
+              width = 0.1,
+              alpha = 0.4,
+              shape = 21) +
+  # model predictions with 95% CI
+  geom_pointrange(data = preds,
+                  mapping = aes(x = water_treatment,
+                                y = predicted,
+                                ymin = conf.low,
+                                ymax = conf.high)) +
+  # creates different panels for each species
+  facet_wrap(~ species_name) +
+  # adds custom colors
+  scale_color_manual(values = c(
+    "Drought stressed" = ds_col,
+    "Well watered" = ww_col
+  )) +
+  # removes legend
+  theme(legend.position = "none") +
+  # relabeled axes
+  labs (x = "Treatment",
+        y = "Total plant mass (g)")
+
+```
+
 
 
 # 6. Writing
